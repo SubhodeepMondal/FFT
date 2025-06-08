@@ -1,0 +1,33 @@
+# Build Artifacts
+bin/
+CMakefiles/
+out/
+
+*.o
+*.out
+*.obj
+*.exe
+*.dSYM
+*.dll
+*.a
+*.so
+*.dylib
+*.lib
+*.pdb
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+
+# IDE Project Files
+.idea/
+.vscode/
+.vs/
+
+# Temporary Files
+*.swp
+*.lock
+*.tmp
+*.log
+
+# Personal Configuration Files
+.env
