@@ -2,6 +2,16 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include <composite_radix_dft.hpp>
+// This file implements the composite radix FFT algorithm using the Cooley-Tukey method.
+// It supports radix-2, radix-3, radix-5, and radix-7 FFTs, as well as a general
+// radix-n FFT for lengths that are not divisible by these radices.
+// The algorithm recursively breaks down the FFT computation into smaller FFTs
+// based on the input length and the available radices.
+// The implementation uses a mixed-radix approach to handle various lengths efficiently.
+// The FFT is computed in-place, and the results are stored in a 2D array where each
+// row corresponds to a complex number (real and imaginary parts).
+
 #define pi 3.1415926535
 
 void radix_2_FFT(float *x, float *y, unsigned stride, unsigned offset,
@@ -177,33 +187,33 @@ float **fft(float *y, unsigned length) {
   return fft_components;
 }
 
-void main() {
+// void main() {
 
-  freopen("input.txt", "r", stdin);
-  freopen("output.txt", "w", stdout);
+//   freopen("input.txt", "r", stdin);
+//   freopen("output.txt", "w", stdout);
 
-  unsigned i, length;
-  float *y;
+//   unsigned i, length;
+//   float *y;
 
-  scanf("%u", &length);
+//   scanf("%u", &length);
 
-  y = (float *)malloc(length * sizeof(float));
+//   y = (float *)malloc(length * sizeof(float));
 
-  for (i = 0; i < length; i++)
-    y[i] = rand() % 10;
-  // y[i] = i + 1;
-  float **fft_component = fft(y, length);
-  printf("length: %d\n[ ", length);
-  for (i = 0; i < length; i++) {
-    printf("%0.0f, ", y[i]);
-  }
-  printf("]\n");
+//   for (i = 0; i < length; i++)
+//     y[i] = rand() % 10;
+//   // y[i] = i + 1;
+//   float **fft_component = fft(y, length);
+//   printf("length: %d\n[ ", length);
+//   for (i = 0; i < length; i++) {
+//     printf("%0.0f, ", y[i]);
+//   }
+//   printf("]\n");
 
-  for (i = 0; i < length; i++) {
-    printf("%f,\t%fj\n", fft_component[i][0], fft_component[i][1]);
-  }
-  for (i = 0; i < length; i++)
-    free(fft_component[i]);
-  free(fft_component);
-  free(y);
-}
+//   for (i = 0; i < length; i++) {
+//     printf("%f,\t%fj\n", fft_component[i][0], fft_component[i][1]);
+//   }
+//   for (i = 0; i < length; i++)
+//     free(fft_component[i]);
+//   free(fft_component);
+//   free(y);
+// }
