@@ -1,21 +1,19 @@
-#include <math.h>
+// This file implements the composite radix FFT algorithm using the Cooley-Tukey
+// method. It supports radix-2, radix-3, radix-5, and radix-7 FFTs, as well as a
+// general radix-n FFT for lengths that are not divisible by these radices. The
+// algorithm recursively breaks down the FFT computation into smaller FFTs based
+// on the input length and the available radices. The implementation uses a
+// mixed-radix approach to handle various lengths efficiently. The FFT is
+// computed in-place, and the results are stored in a 2D array where each row
+// corresponds to a complex number (real and imaginary parts).
+// #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 
 #include <composite_radix_dft.hpp>
-// This file implements the composite radix FFT algorithm using the Cooley-Tukey method.
-// It supports radix-2, radix-3, radix-5, and radix-7 FFTs, as well as a general
-// radix-n FFT for lengths that are not divisible by these radices.
-// The algorithm recursively breaks down the FFT computation into smaller FFTs
-// based on the input length and the available radices.
-// The implementation uses a mixed-radix approach to handle various lengths efficiently.
-// The FFT is computed in-place, and the results are stored in a 2D array where each
-// row corresponds to a complex number (real and imaginary parts).
 
-#define pi 3.1415926535
-
-void radix_2_FFT(float *x, float *y, unsigned stride, unsigned offset,
-                 unsigned k, unsigned j) {
+void radix_2_FFT(std::unique_ptr<float[]> &x, float *y, unsigned stride,
+                 unsigned offset, unsigned k, unsigned j) {
   float x_temp[2], twiddle_fraction;
   unsigned i, idx;
   printf("Inside radix 2 kernel\n");
@@ -30,8 +28,8 @@ void radix_2_FFT(float *x, float *y, unsigned stride, unsigned offset,
   x[j * 2 + 1] = x_temp[1];
 }
 
-void radix_3_FFT(float *x, float *y, unsigned stride, unsigned offset,
-                 unsigned k, unsigned j) {
+void radix_3_FFT(std::unique_ptr<float[]> &x, float *y, unsigned stride,
+                 unsigned offset, unsigned k, unsigned j) {
   float x_temp[2], twiddle_fraction;
   unsigned i, idx;
   printf("Inside radix 3 kernel\n");
@@ -46,8 +44,8 @@ void radix_3_FFT(float *x, float *y, unsigned stride, unsigned offset,
   x[j * 2 + 1] = x_temp[1];
 }
 
-void radix_5_FFT(float *x, float *y, unsigned stride, unsigned offset,
-                 unsigned k, unsigned j) {
+void radix_5_FFT(std::unique_ptr<float[]> &x, float *y, unsigned stride,
+                 unsigned offset, unsigned k, unsigned j) {
   float x_temp[2], twiddle_fraction;
   unsigned i, idx;
   printf("Inside radix 5 kernel\n");
@@ -62,8 +60,8 @@ void radix_5_FFT(float *x, float *y, unsigned stride, unsigned offset,
   x[j * 2 + 1] = x_temp[1];
 }
 
-void radix_7_FFT(float *x, float *y, unsigned stride, unsigned offset,
-                 unsigned k, unsigned j) {
+void radix_7_FFT(std::unique_ptr<float[]> &x, float *y, unsigned stride,
+                 unsigned offset, unsigned k, unsigned j) {
   float x_temp[2], twiddle_fraction;
   unsigned i, idx;
   printf("Inside radix 7 kernel\n");
@@ -78,8 +76,8 @@ void radix_7_FFT(float *x, float *y, unsigned stride, unsigned offset,
   x[j * 2 + 1] = x_temp[1];
 }
 
-void radix_n_FFT(float *x, float *y, unsigned stride, unsigned offset,
-                 unsigned k, unsigned j, unsigned length) {
+void radix_n_FFT(std::unique_ptr<float[]> &x, float *y, unsigned stride,
+                 unsigned offset, unsigned k, unsigned j, unsigned length) {
   float x_temp[2], twiddle_fraction;
   unsigned i, idx;
   // printf("inside n kernel\n");
@@ -94,9 +92,11 @@ void radix_n_FFT(float *x, float *y, unsigned stride, unsigned offset,
   x[j * 2 + 1] = x_temp[1];
 }
 
-void mixed_radix_cooley_tukey(float *x, float *y, unsigned length,
-                              unsigned stride, unsigned depth, unsigned *arr,
-                              unsigned *stride_arr, unsigned k) {
+void mixed_radix_cooley_tukey(std::unique_ptr<float[]> &x, float *y,
+                              unsigned length, unsigned stride, unsigned depth,
+                              std::unique_ptr<unsigned[]> &arr,
+                              std::unique_ptr<unsigned[]> &stride_arr,
+                              unsigned k) {
   unsigned offset = 0;
   unsigned i, idx;
   switch (length) {
@@ -136,12 +136,16 @@ void mixed_radix_cooley_tukey(float *x, float *y, unsigned length,
       radix = 7;
     }
     if (radix) {
-      float x_comp[7][2] = {0};
+      std::unique_ptr<std::unique_ptr<float[]>[]> x_comp =
+          std::make_unique<std::unique_ptr<float[]>[]>(7);
+      for (i = 0; i < 7; i++) {
+        x_comp[i] = std::make_unique<float[]>(2);
+      }
       for (i = 0; i < radix; i++) {
         arr[depth] = i;
         stride_arr[depth] = stride;
-        mixed_radix_cooley_tukey((float *)x_comp, y, length / radix,
-                                 stride * radix, depth + 1, arr, stride_arr, k);
+        mixed_radix_cooley_tukey(x_comp[0], y, length / radix, stride * radix,
+                                 depth + 1, arr, stride_arr, k);
 
         float twiddle_factor = -(2.0 * pi * i * k) / (float)length;
         if (depth == 0) {
@@ -169,51 +173,16 @@ void mixed_radix_cooley_tukey(float *x, float *y, unsigned length,
   }
 }
 
-float **fft(float *y, unsigned length) {
+void fft(std::unique_ptr<std::unique_ptr<float[]>[]> &fft_components, float *y,
+         unsigned length) {
 
-  float **fft_components = (float **)calloc(length, sizeof(float *));
-  for (int i = 0; i < length; i++)
-    fft_components[i] = (float *)calloc(2, sizeof(float));
-
-  unsigned *arr = (unsigned *)calloc(length, sizeof(unsigned));
-  unsigned *stride = (unsigned *)calloc(length, sizeof(unsigned));
+  std::unique_ptr<unsigned[]> arr = std::make_unique<unsigned[]>(length);
+  std::unique_ptr<unsigned[]> stride = std::make_unique<unsigned[]>(length);
 
   for (int i = 0; i < length; i++) {
     mixed_radix_cooley_tukey(fft_components[i], y, length, 1, 0, arr, stride,
                              i);
   }
-  free(arr);
-  free(stride);
-  return fft_components;
+  // free(arr);
+  // free(stride);
 }
-
-// void main() {
-
-//   freopen("input.txt", "r", stdin);
-//   freopen("output.txt", "w", stdout);
-
-//   unsigned i, length;
-//   float *y;
-
-//   scanf("%u", &length);
-
-//   y = (float *)malloc(length * sizeof(float));
-
-//   for (i = 0; i < length; i++)
-//     y[i] = rand() % 10;
-//   // y[i] = i + 1;
-//   float **fft_component = fft(y, length);
-//   printf("length: %d\n[ ", length);
-//   for (i = 0; i < length; i++) {
-//     printf("%0.0f, ", y[i]);
-//   }
-//   printf("]\n");
-
-//   for (i = 0; i < length; i++) {
-//     printf("%f,\t%fj\n", fft_component[i][0], fft_component[i][1]);
-//   }
-//   for (i = 0; i < length; i++)
-//     free(fft_component[i]);
-//   free(fft_component);
-//   free(y);
-// }
